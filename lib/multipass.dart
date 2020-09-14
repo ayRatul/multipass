@@ -19,7 +19,7 @@ abstract class MultiConf<T extends MultiTheme, L extends MultiLanguage,
   final Map<Type, MultiFunction<T>> themes = null;
   final List<D> devices = null;
   final Map<Type, MultiFunction<L>> languages = null;
-  final Map<String, L> supportedLocales = null;
+  final Map<String, Type> supportedLocales = null;
 }
 
 class MultiReference<T extends MultiTheme, L extends MultiLanguage,
