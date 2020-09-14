@@ -51,27 +51,32 @@ class MultiSource<T extends MultiTheme, L extends MultiLanguage,
   final T themeOverride;
   final Widget child;
   final MultiConf multiconf;
-  static T useTheme<T extends MultiTheme>(BuildContext context) {
-    return InheritedModel.inheritFrom<MultiPassData>(context, aspect: 'theme')
+  static T useTheme<T extends MultiTheme, L extends MultiLanguage,
+      D extends MultiDevice>(BuildContext context) {
+    return InheritedModel.inheritFrom<MultiPassData<T, L, D>>(context,
+            aspect: 'theme')
         .theme;
   }
 
-  static L useLanguage<L extends MultiLanguage>(BuildContext context) {
-    return InheritedModel.inheritFrom<MultiPassData>(context,
+  static L useLanguage<T extends MultiTheme, L extends MultiLanguage,
+      D extends MultiDevice>(BuildContext context) {
+    return InheritedModel.inheritFrom<MultiPassData<T, L, D>>(context,
             aspect: 'language')
         .language;
   }
 
-  static Type useDevice(BuildContext context) {
-    return InheritedModel.inheritFrom<MultiPassData>(context, aspect: 'device')
-        .device
-        .runtimeType;
+  static D useDevice<T extends MultiTheme, L extends MultiLanguage,
+      D extends MultiDevice>(BuildContext context) {
+    return InheritedModel.inheritFrom<MultiPassData<T, L, D>>(context,
+            aspect: 'device')
+        .device;
   }
 
-  static void useAll(BuildContext context) {
-    useDevice(context);
-    useTheme(context);
-    useLanguage(context);
+  static void useAll<T extends MultiTheme, L extends MultiLanguage,
+      D extends MultiDevice>(BuildContext context) {
+    useDevice<T, L, D>(context);
+    useTheme<T, L, D>(context);
+    useLanguage<T, L, D>(context);
   }
 
   static MultiPassData<T, L, D>
@@ -166,7 +171,7 @@ class _MultiPassState<T extends MultiTheme, L extends MultiLanguage,
   void setDevice() {} //This should not be possible ,antipattern
 
   void initializeThemes() {
-    assert(widget.multiconf.languages.containsKey(T),
+    assert(widget.multiconf.themes.containsKey(T),
         "The base theme ${T.toString()} could not be found");
     if (widget.themeOverride != null &&
         widget.multiconf.themes.containsKey(widget.themeOverride)) {
@@ -202,7 +207,7 @@ class _MultiPassState<T extends MultiTheme, L extends MultiLanguage,
 
   @override
   Widget build(BuildContext context) {
-    return MultiPassData<T, L, D>(
+    return MultiPassData(
         child: widget.child,
         state: this,
         theme: theme,
@@ -245,31 +250,3 @@ class MultiPassData<T extends MultiTheme, L extends MultiLanguage,
         device != oldWidget.device;
   }
 }
-
-// class DefaultTheme extends MultiTheme {}
-
-// class DefaultLanguage extends MultiLanguage {}
-
-// class DefaultDevice extends MultiDevice {
-//   @override
-//   double get minSize => 0;
-
-//   @override
-//   double get multiplier => 1;
-
-//   int exampleInt = 10;
-// }
-
-// final GlobalKey<_MultiPassState<DefaultTheme, DefaultLanguage, DefaultDevice>>
-//     _insideKey =
-//     GlobalKey<_MultiPassState<DefaultTheme, DefaultLanguage, DefaultDevice>>();
-
-// mixin Paco {
-//   var language = _insideKey.currentState.language;
-//   var theme = _insideKey.currentState.theme;
-//   var device = _insideKey.currentState.device;
-//   useTheme(BuildContext context) => MultiSource.useTheme(context);
-//   useAll(BuildContext context) => MultiSource.useAll(context);
-//   useLanguage(BuildContext context) => MultiSource.useLanguage(context);
-//   useDevice(BuildContext context) => MultiSource.useDevice(context);
-// }
