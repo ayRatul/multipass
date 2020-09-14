@@ -12,74 +12,79 @@ abstract class MultiDevice {
   final double minSize = 0;
 }
 
-class _MultiDevice {
-  _MultiDevice(
-      {this.type, this.multiplier = 1, this.minSize = 0, this.maxSize = 0});
-
-  _MultiDevice.fromDevice(MultiDevice device, double maxValue)
-      : this.minSize = device.minSize,
-        this.maxSize = maxValue,
-        this.type = device.runtimeType,
-        this.multiplier = device.multiplier;
-  final Type type;
-  final double multiplier;
-  final double minSize;
-  final double maxSize;
-}
-
 typedef V MultiFunction<V>();
 
-abstract class MultiConf<T extends MultiTheme, L extends MultiLanguage> {
-  final Map<T, MultiFunction<T>> themes = null;
-  final List<MultiDevice> devices = null;
-  final Map<L, MultiFunction<L>> languages = null;
+abstract class MultiConf<T extends MultiTheme, L extends MultiLanguage,
+    D extends MultiDevice> {
+  final Map<Type, MultiFunction<T>> themes = null;
+  final List<D> devices = null;
+  final Map<Type, MultiFunction<L>> languages = null;
   final Map<String, L> supportedLocales = null;
 }
 
-class MultiPass<T extends MultiTheme, L extends MultiLanguage>
-    extends StatefulWidget {
-  const MultiPass(
+class MultiSource<T extends MultiTheme, L extends MultiLanguage,
+    D extends MultiDevice> extends StatefulWidget {
+  MultiSource(
       {@required this.child,
       @required this.multiconf,
+      @required Key key,
       this.languageOverride,
-      this.themeOverride});
+      this.themeOverride})
+      : super(key: key);
   final L languageOverride;
   final T themeOverride;
   final Widget child;
   final MultiConf multiconf;
-  static _MThemeProvider theme(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_MThemeProvider>();
-  static _MLanguageProvider language(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_MLanguageProvider>();
-  static _MDeviceProvider device(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_MDeviceProvider>();
-  static void setTheme(BuildContext context, Type themeType) => context
-      .dependOnInheritedWidgetOfExactType<_MultiState>()
-      .state
-      .setTheme(themeType);
-  static void setLanguage(BuildContext context, Type languageType) => context
-      .dependOnInheritedWidgetOfExactType<_MultiState>()
-      .state
-      .setLanguage(languageType);
+  static T useTheme<T extends MultiTheme>(BuildContext context) {
+    return InheritedModel.inheritFrom<MultiPassData>(context, aspect: 'theme')
+        .theme;
+  }
+
+  static L useLanguage<L extends MultiLanguage>(BuildContext context) {
+    return InheritedModel.inheritFrom<MultiPassData>(context,
+            aspect: 'language')
+        .language;
+  }
+
+  static Type useDevice(BuildContext context) {
+    return InheritedModel.inheritFrom<MultiPassData>(context, aspect: 'device')
+        .device
+        .runtimeType;
+  }
+
+  static void useAll(BuildContext context) {
+    useDevice(context);
+    useTheme(context);
+    useLanguage(context);
+  }
+
+  static MultiPassData<T, L, D>
+      of<T extends MultiTheme, L extends MultiLanguage, D extends MultiDevice>(
+              BuildContext context) =>
+          InheritedModel.inheritFrom<MultiPassData<T, L, D>>(context);
   @override
-  _MultiPassState createState() => _MultiPassState<T, L>();
+  _MultiPassState createState() => _MultiPassState<T, L, D>();
 }
 
-class _MultiPassState<T extends MultiTheme, L extends MultiLanguage>
-    extends State<MultiPass> with WidgetsBindingObserver {
-  _MultiDevice device = _MultiDevice();
-  List<_MultiDevice> devices;
+class _MultiPassState<T extends MultiTheme, L extends MultiLanguage,
+        D extends MultiDevice> extends State<MultiSource>
+    with WidgetsBindingObserver {
+  double _nextMaxSize = 0;
+  List<D> _orderedDevices;
+  D device;
   T theme;
   L language;
 
   @override
   void initState() {
-    if (widget.multiconf.devices != null) initializeDevices();
     if (widget.multiconf.languages != null &&
         widget.multiconf.supportedLocales != null) initializeLanguages();
     if (widget.multiconf.themes != null) initializeThemes();
+    if (widget.multiconf.devices != null) {
+      WidgetsBinding.instance.addObserver(this);
+      initializeDevices();
+    }
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
@@ -98,16 +103,12 @@ class _MultiPassState<T extends MultiTheme, L extends MultiLanguage>
     List<MultiDevice> _dev = widget.multiconf.devices;
     if (_dev.length == 0) return;
     if (_dev.length == 1) {
-      device = _MultiDevice.fromDevice(_dev.first, _dev.first.minSize);
+      device = _dev.first;
+      _orderedDevices = _dev;
+      return;
     }
-    List<MultiDevice> _devices = _dev.toList()
+    _orderedDevices = _dev.toList()
       ..sort((a, b) => a.minSize.compareTo(b.minSize));
-    List<_MultiDevice> _orderedList = [];
-    for (int i = 0; i < _devices.length; i++) {
-      _orderedList.add(_MultiDevice.fromDevice(_devices[i],
-          _devices[i + 1 != _devices.length ? i : _devices.length].minSize));
-    }
-    devices = _orderedList;
     detectDevice(shouldUpdate: false);
   }
 
@@ -146,10 +147,10 @@ class _MultiPassState<T extends MultiTheme, L extends MultiLanguage>
     }
   }
 
-  void setDevice() {} //This should not be that, is anti pattern
+  void setDevice() {} //This should not be possible ,antipattern
 
   void initializeThemes() {
-    assert(widget.multiconf.languages.containsKey(L),
+    assert(widget.multiconf.languages.containsKey(T),
         "The base theme ${T.toString()} could not be found");
     if (widget.themeOverride != null &&
         widget.multiconf.themes.containsKey(widget.themeOverride)) {
@@ -163,15 +164,21 @@ class _MultiPassState<T extends MultiTheme, L extends MultiLanguage>
 
   void detectDevice({bool shouldUpdate = true}) {
     List<MultiDevice> _devices = widget.multiconf.devices;
-    if (_devices == null || _devices.length == 0) return;
+    if (_devices == null || _devices.length <= 1) return;
     double size =
         ui.window.physicalSize.shortestSide / ui.window.devicePixelRatio;
-    if (size > device.minSize && size <= device.maxSize) return;
-    for (var _t = 0; _t < devices.length; _t++) {
-      _MultiDevice _currentDevice = devices[_t];
-      if (size > _currentDevice.minSize && size <= _currentDevice.maxSize) {
-        device = _currentDevice;
-        break;
+    if (_nextMaxSize == 0 ||
+        device == null ||
+        (size > device.minSize && size <= _nextMaxSize)) {
+      for (var _t = 0; _t < _orderedDevices.length; _t++) {
+        D _currentDevice = _orderedDevices[_t];
+        double _nextMax = _t + 1 == _orderedDevices.length
+            ? double.infinity
+            : _orderedDevices[_t + 1].minSize;
+        if (size > _currentDevice.minSize && size <= _nextMax) {
+          device = _currentDevice;
+          break;
+        }
       }
     }
     if (shouldUpdate) setState(() {});
@@ -179,60 +186,74 @@ class _MultiPassState<T extends MultiTheme, L extends MultiLanguage>
 
   @override
   Widget build(BuildContext context) {
-    return _MultiState(
+    return MultiPassData<T, L, D>(
+        child: widget.child,
         state: this,
-        child: _MThemeProvider<T>(
-          theme: theme,
-          child: _MDeviceProvider(
-            device: device,
-            child: _MLanguageProvider<L>(
-              language: language,
-              child: widget.child,
-            ),
-          ),
-        ));
+        theme: theme,
+        language: language,
+        device: device);
   }
 }
 
-class _MultiState extends InheritedWidget {
+class MultiPassData<T extends MultiTheme, L extends MultiLanguage,
+    D extends MultiDevice> extends InheritedModel<String> {
+  const MultiPassData(
+      {this.state, this.theme, this.language, this.device, Widget child})
+      : super(child: child);
+
   final _MultiPassState state;
-  const _MultiState({Key key, @required Widget child, @required this.state})
-      : super(key: key, child: child);
-
-  @override
-  bool updateShouldNotify(_MultiState oldWidget) => oldWidget.state != state;
-}
-
-class _MThemeProvider<T extends MultiTheme> extends InheritedWidget {
   final T theme;
-  const _MThemeProvider({Key key, @required Widget child, @required this.theme})
-      : super(key: key, child: child);
-
-  @override
-  bool updateShouldNotify(_MThemeProvider oldWidget) =>
-      oldWidget.theme != theme;
-}
-
-class _MDeviceProvider extends InheritedWidget {
-  final _MultiDevice device;
-  const _MDeviceProvider({
-    Key key,
-    @required Widget child,
-    @required this.device,
-  }) : super(key: key, child: child);
-
-  @override
-  bool updateShouldNotify(_MDeviceProvider oldWidget) =>
-      oldWidget.device != device;
-}
-
-class _MLanguageProvider<L extends MultiLanguage> extends InheritedWidget {
   final L language;
-  const _MLanguageProvider(
-      {Key key, @required Widget child, @required this.language})
-      : super(key: key, child: child);
+  final D device;
+  static MultiPassData of(BuildContext context, String aspect) {
+    return InheritedModel.inheritFrom<MultiPassData>(context, aspect: aspect);
+  }
 
   @override
-  bool updateShouldNotify(_MLanguageProvider oldWidget) =>
-      oldWidget.language != language;
+  bool updateShouldNotifyDependent(
+      MultiPassData oldWidget, Set<String> aspects) {
+    if (aspects.contains('theme') && theme != oldWidget.theme) {
+      return true;
+    } else if (aspects.contains('language') && language != oldWidget.language) {
+      return true;
+    } else if (aspects.contains('device') && device != oldWidget.device) {
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  bool updateShouldNotify(MultiPassData oldWidget) {
+    return theme != oldWidget.theme ||
+        language != oldWidget.language ||
+        device != oldWidget.device;
+  }
 }
+
+// class DefaultTheme extends MultiTheme {}
+
+// class DefaultLanguage extends MultiLanguage {}
+
+// class DefaultDevice extends MultiDevice {
+//   @override
+//   double get minSize => 0;
+
+//   @override
+//   double get multiplier => 1;
+
+//   int exampleInt = 10;
+// }
+
+// final GlobalKey<_MultiPassState<DefaultTheme, DefaultLanguage, DefaultDevice>>
+//     _insideKey =
+//     GlobalKey<_MultiPassState<DefaultTheme, DefaultLanguage, DefaultDevice>>();
+
+// mixin Paco {
+//   var language = _insideKey.currentState.language;
+//   var theme = _insideKey.currentState.theme;
+//   var device = _insideKey.currentState.device;
+//   useTheme(BuildContext context) => MultiSource.useTheme(context);
+//   useAll(BuildContext context) => MultiSource.useAll(context);
+//   useLanguage(BuildContext context) => MultiSource.useLanguage(context);
+//   useDevice(BuildContext context) => MultiSource.useDevice(context);
+// }
