@@ -22,32 +22,14 @@ abstract class MultiConf<T extends MultiTheme, L extends MultiLanguage,
   final Map<String, Type> supportedLocales = null;
 }
 
-class MultiReference<T extends MultiTheme, L extends MultiLanguage,
-    D extends MultiDevice> {
-  static MultiReference<T, L, D> createReference<T extends MultiTheme,
-      L extends MultiLanguage, D extends MultiDevice>() {
-    return MultiReference<T, L, D>(GlobalKey<_MultiPassState<T, L, D>>());
-  }
-
-  const MultiReference(this.key);
-  final GlobalKey<_MultiPassState<T, L, D>> key;
-
-  T get theme => key.currentState.theme;
-  D get device => key.currentState.device;
-  L get language => key.currentState.language;
-}
-
 class MultiSource<T extends MultiTheme, L extends MultiLanguage,
     D extends MultiDevice> extends StatefulWidget {
   MultiSource(
       {@required this.child,
       @required this.multiconf,
-      @required this.reference,
       this.languageOverride,
-      this.themeOverride})
-      : super(key: reference.key);
+      this.themeOverride});
   final L languageOverride;
-  final MultiReference<T, L, D> reference;
   final T themeOverride;
   final Widget child;
   final MultiConf multiconf;
@@ -70,13 +52,6 @@ class MultiSource<T extends MultiTheme, L extends MultiLanguage,
     return InheritedModel.inheritFrom<MultiPassData<T, L, D>>(context,
             aspect: 'device')
         .device;
-  }
-
-  static void useAll<T extends MultiTheme, L extends MultiLanguage,
-      D extends MultiDevice>(BuildContext context) {
-    useDevice<T, L, D>(context);
-    useTheme<T, L, D>(context);
-    useLanguage<T, L, D>(context);
   }
 
   static MultiPassData<T, L, D>
