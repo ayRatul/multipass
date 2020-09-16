@@ -1,64 +1,53 @@
 import 'package:flutter/widgets.dart';
-import 'devices.dart';
+import 'package:multipass/multipass.dart';
+import 'metrics.dart';
 import 'languages.dart';
-import 'themes.dart';
-export 'devices.dart';
-export 'languages.dart';
-export 'themes.dart';
+import 'paletes.dart';
 
-final MultiReference<DefaultTheme, DefaultLanguage, DefaultDevice> reference =
-    MultiReference.createReference();
-
-mixin MultiPass {
-  DefaultLanguage get language => reference.language;
-  DefaultTheme get theme => reference.theme;
-  DefaultDevice get device => reference.device;
-  DefaultTheme useTheme(BuildContext context) =>
-      MultiSource.useTheme<DefaultTheme, DefaultLanguage, DefaultDevice>(
-          context);
-  void useAll(BuildContext context) =>
-      MultiSource.useAll<DefaultTheme, DefaultLanguage, DefaultDevice>(context);
-
-  DefaultLanguage useLanguage(BuildContext context) =>
-      MultiSource.useLanguage<DefaultTheme, DefaultLanguage, DefaultDevice>(
-          context);
-
-  DefaultDevice useDevice(BuildContext context) =>
-      MultiSource.useDevice<DefaultTheme, DefaultLanguage, DefaultDevice>(
-          context);
-
-  useThemeAndDevice(BuildContext context) {
-    MultiSource.useDevice<DefaultTheme, DefaultLanguage, DefaultDevice>(
-        context);
-    MultiSource.useTheme<DefaultTheme, DefaultLanguage, DefaultDevice>(context);
-  }
+extension MultiPass on BuildContext {
+  Languages get language => MultiSource.getLanguage(this);
+  Palettes get theme => MultiSource.getPalette(this);
+  Metrics get metrics => MultiSource.getMetric(this);
+  MyStyle get style => MultiSource.getStyle(this);
 }
 
-class MyConfiguration
-    implements MultiConf<DefaultTheme, DefaultLanguage, DefaultDevice> {
+class MyConfiguration implements MultiConf<Palettes, Languages, Metrics> {
   @override
-  List<DefaultDevice> get devices => DefaultDevice.getListOfDevices;
+  String get defaultLocale => 'en';
 
   @override
-  Map<Type, MultiFunction<DefaultLanguage>> get languages =>
-      DefaultLanguage.languageBuilders;
+  Type get defaultPalette => LightTheme;
 
   @override
-  Map<String, Type> get supportedLocales => DefaultLanguage.locales;
+  Map<String, LocaleBuilder> get localeBuilders => Languages.localeBuilder;
 
   @override
-  Map<Type, MultiFunction<DefaultTheme>> get themes =>
-      DefaultTheme.supportedThemes;
+  Map<double, MetricBuilder> get metrics => Metrics.getListOfDevices;
+
+  @override
+  Map<Type, PaletteBuilder> get paletteBuilders => Palettes.paletteBuilders;
+
+  @override
+  MultiStyle styleBuilder(
+          Metrics metrics, Palettes palette, Languages language) =>
+      MyStyle(metrics, palette, language);
 }
 
-extension MultiNumber on num {
-  double get d => this * reference.device.multiplier;
-  int get i => this.d.toInt();
+class MyStyle extends MultiStyle {
+  MyStyle(Metrics metrics, Palettes palette, Languages language)
+      : this.exampleTextStyle = TextStyle(
+          fontSize: 24.0 * metrics.exampleMargin,
+          color: palette.background,
+        );
+  final TextStyle exampleTextStyle;
 }
-
 
 //To use this , do :
 //void main() {
 //  runApp(MultiSource<DefaultTheme, DefaultLanguage, DefaultDevice>(
 //      child: const MyApp(), multiconf: MyConfiguration(), reference: reference));
 //}
+
+//Then just call
+//context.style.exampleTextStyle
+//context.palette.background

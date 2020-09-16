@@ -1,21 +1,18 @@
-import 'test.dart';
+import 'package:multipass/multipass.dart';
 
-class DefaultLanguage extends MultiLanguage {
-  static get languageBuilders => {
-        DefaultLanguage: () => DefaultLanguage(),
-        EnglishLanguage: () => EnglishLanguage(),
-        SpanishLanguage: () => SpanishLanguage()
-      };
-  static get locales => {
-        'en': EnglishLanguage,
-        'es': SpanishLanguage,
+abstract class Languages extends MultiLanguage {
+  static Map<String, LocaleBuilder> get localeBuilder => {
+        'en': () => EnglishLanguage(),
+        'es': () => SpanishLanguage(),
       };
 
+  final String hi = "";
+}
+
+class EnglishLanguage implements Languages {
   final String hi = "Hi!";
 }
 
-class EnglishLanguage extends DefaultLanguage {} //We don't do anything since english is the default language
-
-class SpanishLanguage implements DefaultLanguage {
-  String get hi => "Hola!";
+class SpanishLanguage implements Languages {
+  final String hi = "Hola!";
 }
