@@ -50,7 +50,7 @@ class MultiSource<T extends MultiPalette, L extends MultiLanguage,
   }
 
   static M getMetric<M extends MultiMetric>(BuildContext context) {
-    return InheritedModel.inheritFrom<MultiPassData>(context, aspect: 'device')
+    return InheritedModel.inheritFrom<MultiPassData>(context, aspect: 'metric')
         .metric;
   }
 
@@ -104,12 +104,12 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
     if (_dev.length == 0) return;
     if (_dev.length == 1) {
       metric = _dev[_dev.keys.first]();
-      _orderedDevices = _dev;
       return;
     }
+    _orderedDevices = _dev;
     // _orderedDevices = _dev.toList()
     //   ..sort((a, b) => a.minSize.compareTo(b.minSize));
-    detectDevice(shouldUpdate: false);
+    if (_dev.length != 1)detectDevice(shouldUpdate: false);
   }
 
   void initializeLanguages() {
@@ -176,11 +176,12 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
     if (_nextMaxSize == 0 ||
         metric == null ||
         (size > _previousMinSize && size <= _nextMaxSize)) {
-      for (var _t = 0; _t < _orderedDevices.length; _t++) {
+      for (var _t = 0; _t < _orderedDevices.keys.length; _t++) {
         double _currentMin = _orderedDevices.keys.elementAt(_t);
         double _nextMax = _t + 1 == _orderedDevices.length
             ? double.infinity
-            : _orderedDevices.keys.elementAt(_t);
+            : _orderedDevices.keys.elementAt(_t+1);
+            print('$_currentMin,$_nextMax');
         if (size > _currentMin && size <= _nextMax) {
           _previousMinSize = _currentMin;
           metric = _orderedDevices[_currentMin]();
@@ -189,6 +190,8 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
       }
     }
     buildStyle();
+    print(metric);
+    print(_orderedDevices.keys.elementAt(1));
     if (shouldUpdate) setState(() {});
   }
 
