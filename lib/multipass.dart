@@ -107,8 +107,6 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
       return;
     }
     _orderedDevices = _dev;
-    // _orderedDevices = _dev.toList()
-    //   ..sort((a, b) => a.minSize.compareTo(b.minSize));
     if (_dev.length != 1)detectDevice(shouldUpdate: false);
   }
 
@@ -181,8 +179,7 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
         double _nextMax = _t + 1 == _orderedDevices.length
             ? double.infinity
             : _orderedDevices.keys.elementAt(_t+1);
-            print('$_currentMin,$_nextMax');
-        if (size > _currentMin && size <= _nextMax) {
+        if (size >= _currentMin && size < _nextMax) {
           _previousMinSize = _currentMin;
           metric = _orderedDevices[_currentMin]();
           break;
@@ -191,7 +188,6 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
     }
     buildStyle();
     print(metric);
-    print(_orderedDevices.keys.elementAt(1));
     if (shouldUpdate) setState(() {});
   }
 
