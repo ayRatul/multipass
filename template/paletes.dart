@@ -2,8 +2,10 @@ import 'package:flutter/widgets.dart';
 import 'package:multipass/multipass.dart';
 
 abstract class Palettes extends MultiPalette {
-  static Map<Type, PaletteBuilder> get paletteBuilders =>
-      {LightTheme: () => LightTheme(), DarkTheme: () => DarkTheme()};
+  static Map<MultiOption, PaletteBuilder> get paletteBuilders => {
+        MultiOption(id: 'lightTheme'): () => LightTheme(),
+        MultiOption(id: 'darkTheme'): () => DarkTheme()
+      };
   final Color background = null;
 }
 

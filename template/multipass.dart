@@ -13,19 +13,20 @@ extension MultiPass on BuildContext {
 
 class MyConfiguration implements MultiConf<Palettes, Languages, Metrics> {
   @override
-  String get defaultLocale => 'en';
+  String get defaultLocaleId => 'en';
 
   @override
-  Type get defaultPalette => LightTheme;
+  String get defaultPaletteId => "lightTheme";
 
   @override
-  Map<String, LocaleBuilder> get localeBuilders => Languages.localeBuilder;
+  Map<MultiOption, LocaleBuilder> get localeBuilders => Languages.localeBuilder;
 
   @override
   Map<double, MetricBuilder> get metrics => Metrics.getListOfDevices;
 
   @override
-  Map<Type, PaletteBuilder> get paletteBuilders => Palettes.paletteBuilders;
+  Map<MultiOption, PaletteBuilder> get paletteBuilders =>
+      Palettes.paletteBuilders;
 
   @override
   MultiStyle styleBuilder(
@@ -44,7 +45,7 @@ class MyStyle extends MultiStyle {
 
 //To use this , do :
 //void main() {
-//  runApp(MultiSource<DefaultTheme, DefaultLanguage, DefaultDevice>(
+//  runApp(MultiSource(
 //      child: const MyApp(), multiconf: MyConfiguration(), reference: reference));
 //}
 

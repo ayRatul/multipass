@@ -18,24 +18,23 @@ typedef MultiMetric MetricBuilder();
 
 abstract class MultiConf<P extends MultiPalette, L extends MultiLanguage,
     M extends MultiMetric> {
-  final Map<Type, PaletteBuilder> paletteBuilders = null;
+  final Map<MultiOption, PaletteBuilder> paletteBuilders = null;
   final Map<double, MetricBuilder> metrics = null;
-  final Map<String, LocaleBuilder> localeBuilders = null;
-  final String defaultLocale = null;
-  final Type defaultPalette = null;
+  final Map<MultiOption, LocaleBuilder> localeBuilders = null;
+  final String defaultLocaleId = null;
+  final String defaultPaletteId = null;
 
   MultiStyle styleBuilder(M metrics, P palette, L language) => null;
 }
 
-class MultiSource<T extends MultiPalette, L extends MultiLanguage,
-    M extends MultiMetric, S extends MultiStyle> extends StatefulWidget {
+class MultiSource extends StatefulWidget {
   MultiSource(
       {@required this.child,
       @required this.multiconf,
-      this.localeOverride,
-      this.themeOverride});
-  final String localeOverride;
-  final T themeOverride;
+      this.languageId,
+      this.themeId});
+  final String languageId;
+  final String themeId;
   final Widget child;
   final MultiConf multiconf;
   static P getPalette<P extends MultiPalette>(BuildContext context) {
@@ -71,6 +70,8 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
   Map<double, MetricBuilder> _orderedDevices;
   MultiMetric metric;
   MultiPalette palette;
+  String currentPaletteId;
+  String currentLocaleId;
   MultiLanguage language;
   MultiStyle style;
   @override
@@ -107,42 +108,70 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
       return;
     }
     _orderedDevices = _dev;
-    if (_dev.length != 1)detectDevice(shouldUpdate: false);
+    if (_dev.length != 1) detectDevice(shouldUpdate: false);
   }
 
   void initializeLanguages() {
-    assert(
-        widget.multiconf.localeBuilders
-            .containsKey(widget.multiconf.defaultLocale),
-        "The default localce ${widget.multiconf.defaultLocale.toString()} could not be found in MultiConf.");
-    if (widget.localeOverride != null &&
-        widget.multiconf.localeBuilders.containsKey(widget.localeOverride)) {
+    MultiOption opt = containsId(
+        widget.multiconf.defaultLocaleId, widget.multiconf.localeBuilders.keys);
+    MultiOption _opt;
+    assert(opt != null,
+        "The default defaultLocale ${widget.multiconf.defaultLocaleId} could not be found in MultiConf.");
+    if (widget.languageId != null) {
+      _opt =
+          containsId(widget.languageId, widget.multiconf.localeBuilders.keys);
       //If we override the language we return that one
-      language = widget.multiconf.localeBuilders[widget.localeOverride]();
-    } else if (widget.multiconf.localeBuilders
-        .containsKey(ui.window.locale.languageCode)) {
-      language = widget.multiconf.localeBuilders[ui.window.locale
-          .languageCode](); //if we find the locale we build the language
     } else {
-      language = widget.multiconf.localeBuilders[widget.multiconf
-          .defaultLocale](); //If we don't find it, we build the default language
+      _opt = containsId(
+          ui.window.locale.languageCode, widget.multiconf.localeBuilders.keys);
     }
+    if (_opt != null) opt = _opt;
+    currentLocaleId = opt.id;
+    language =
+        getFromKey<LocaleBuilder>(opt, widget.multiconf.localeBuilders)();
+
+    // widget.multiconf.localeBuilders[opt]();
   }
 
-  void setPalette(Type type) {
+  MultiOption containsId(String id, Iterable<MultiOption> list) {
+    for (int i = 0; i < list.length; i++)
+      if (list.elementAt(i).id == id) return list.elementAt(i);
+    return null;
+  }
+
+  T getFromKey<T>(MultiOption option, Map<MultiOption, dynamic> list) {
+    for (int o = 0; o < list.length; o++) {
+      MultiOption obj = list.keys.elementAt(o);
+      if (obj.id == option.id) {
+        return list[obj];
+      }
+      // if(list[list.keys[o]].)
+    }
+    return null;
+  }
+
+  void setPalette(MultiOption pal) {
     if (widget.multiconf.paletteBuilders != null &&
-        widget.multiconf.paletteBuilders.containsKey(type)) {
-      palette = widget.multiconf.paletteBuilders[type]();
+        pal != null &&
+        containsId(pal.id, widget.multiconf.paletteBuilders.keys) != null) {
+      palette =
+          getFromKey<PaletteBuilder>(pal, widget.multiconf.paletteBuilders)();
+      // widget.multiconf.paletteBuilders[pal]();
       buildStyle();
+      currentPaletteId = pal.id;
       if (mounted) setState(() {});
     }
   }
 
-  void setLanguage(Type type) {
+  void setLanguage(MultiOption lang) {
     if (widget.multiconf.localeBuilders != null &&
-        widget.multiconf.localeBuilders.containsKey(type)) {
-      language = widget.multiconf.localeBuilders[type]();
+        lang != null &&
+        containsId(lang.id, widget.multiconf.localeBuilders.keys) != null) {
+      language =
+          getFromKey<LocaleBuilder>(lang, widget.multiconf.localeBuilders)();
+      // widget.multiconf.localeBuilders[lang]();
       buildStyle();
+      currentLocaleId = lang.id;
       if (mounted) setState(() {});
     }
   }
@@ -154,18 +183,19 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
   }
 
   void initializeColors() {
-    assert(
-        widget.multiconf.paletteBuilders
-            .containsKey(widget.multiconf.defaultPalette),
-        "The default palette ${widget.multiconf.defaultPalette.toString()} could not be found in MultiConf");
-    if (widget.themeOverride != null &&
-        widget.multiconf.paletteBuilders.containsKey(widget.themeOverride)) {
-      // if we override the theme we return
-      palette = widget.multiconf.paletteBuilders[widget.themeOverride]();
-    } else {
-      palette = widget.multiconf.paletteBuilders[widget
-          .multiconf.defaultPalette](); // if not, we return the default theme
+    MultiOption opt = containsId(widget.multiconf.defaultPaletteId,
+        widget.multiconf.paletteBuilders.keys);
+    MultiOption _opt;
+    assert(opt != null,
+        "The default palette ${widget.multiconf.defaultPaletteId} could not be found in MultiConf");
+    if (widget.themeId != null) {
+      _opt = containsId(widget.themeId, widget.multiconf.paletteBuilders.keys);
+      if (_opt != null) opt = _opt;
     }
+    currentPaletteId = opt.id;
+    palette =
+        getFromKey<PaletteBuilder>(opt, widget.multiconf.paletteBuilders)();
+    // widget.multiconf.paletteBuilders[opt]();
   }
 
   void detectDevice({bool shouldUpdate = true}) {
@@ -178,7 +208,7 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
         double _currentMin = _orderedDevices.keys.elementAt(_t);
         double _nextMax = _t + 1 == _orderedDevices.length
             ? double.infinity
-            : _orderedDevices.keys.elementAt(_t+1);
+            : _orderedDevices.keys.elementAt(_t + 1);
         if (size >= _currentMin && size < _nextMax) {
           _previousMinSize = _currentMin;
           metric = _orderedDevices[_currentMin]();
@@ -187,7 +217,6 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
       }
     }
     buildStyle();
-    print(metric);
     if (shouldUpdate) setState(() {});
   }
 
@@ -245,3 +274,18 @@ class MultiPassData extends InheritedModel<String> {
         metric != oldWidget.metric;
   }
 }
+
+class MultiOption {
+  const MultiOption({this.textBuilder, this.icon, @required this.id});
+  final StringBuilder textBuilder;
+  final IconData icon;
+  final String id;
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other.runtimeType != runtimeType) return false;
+    return other is MultiOption && other.id == id;
+  }
+}
+
+typedef String StringBuilder(BuildContext context);

@@ -1,9 +1,9 @@
 import 'package:multipass/multipass.dart';
 
 abstract class Languages extends MultiLanguage {
-  static Map<String, LocaleBuilder> get localeBuilder => {
-        'en': () => EnglishLanguage(),
-        'es': () => SpanishLanguage(),
+  static Map<MultiOption, LocaleBuilder> get localeBuilder => {
+        MultiOption(id: 'en'): () => EnglishLanguage(),
+        MultiOption(id: 'es'): () => SpanishLanguage(),
       };
 
   final String hi = "";
