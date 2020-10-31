@@ -118,8 +118,6 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
     currentLocaleId = opt.id;
     language =
         getFromKey<LocaleBuilder>(opt, widget.multiconf.localeBuilders)();
-
-    // widget.multiconf.localeBuilders[opt]();
   }
 
   MultiOption containsId(String id, Iterable<MultiOption> list) {
@@ -140,34 +138,41 @@ class _MultiPassState extends State<MultiSource> with WidgetsBindingObserver {
   }
 
   void setPalette(String paletteId) {
-    if (widget.multiconf.paletteBuilders != null && paletteId != null) {
+    if (widget.multiconf.paletteBuilders == null ||
+        paletteId == currentPaletteId) return;
+    if (paletteId != null) {
       MultiOption _opt =
           containsId(paletteId, widget.multiconf.paletteBuilders.keys);
       if (_opt == null) return;
       palette =
           getFromKey<PaletteBuilder>(_opt, widget.multiconf.paletteBuilders)();
       // widget.multiconf.paletteBuilders[pal]();
-      buildStyle();
       currentPaletteId = _opt.id;
-      if (mounted) setState(() {});
+    } else {
+      initializeColors();
     }
+    buildStyle();
+    if (mounted) setState(() {});
   }
 
   void setLanguage(String locale) {
-    if (widget.multiconf.localeBuilders != null && locale != null) {
+    if (widget.multiconf.localeBuilders == null || locale == currentLocaleId)
+      return;
+    if (locale != null) {
       MultiOption _opt =
           containsId(locale, widget.multiconf.localeBuilders.keys);
       if (_opt == null) return;
       language =
           getFromKey<LocaleBuilder>(_opt, widget.multiconf.localeBuilders)();
-      // widget.multiconf.localeBuilders[lang]();
       buildStyle();
       currentLocaleId = _opt.id;
-      if (mounted) setState(() {});
+    } else {
+      initializeLanguages();
     }
+    if (mounted) setState(() {});
   }
 
-  void setDevice() {} //This should not be possible ,antipattern
+  //void setDevice() {} //This should not be possible ,antipattern
 
   void buildStyle() {
     style = widget.multiconf.styleBuilder(metric, palette, language);
@@ -263,9 +268,9 @@ class MultiPassData extends InheritedModel<String> {
 }
 
 class MultiOption {
-  const MultiOption({this.textBuilder, this.icon, @required this.id});
+  const MultiOption({this.textBuilder, this.colorsBuilder, @required this.id});
   final StringBuilder textBuilder;
-  final IconData icon;
+  final ColorsBuilder colorsBuilder;
   final String id;
   @override
   bool operator ==(Object other) {
@@ -275,4 +280,5 @@ class MultiOption {
   }
 }
 
+typedef List<Color> ColorsBuilder();
 typedef String StringBuilder(BuildContext context);
